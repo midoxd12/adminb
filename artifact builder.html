@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thoth Scribe — Artifact Entry Tool</title>
+  <style>
+    :root {
+      --bg:    #0F0D09;
+      --card:  #1A1814;
+      --bd:    #302820;
+      --gold:  #C6A75C;
+      --goldh: #E2C98A;
+      --text:  #E0D8C8;
+      --muted: #7A7060;
+      --inp:   #100E0B;
+      --teal:  #7EC8C0;
+      --red:   #5A1A1A;
+      --redt:  #FF9090;
+      --green: #1A3A2A;
+      --greent:#7EC89A;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:20px;line-height:1.5}
+
+    h1{color:var(--gold);font-size:1rem;letter-spacing:.2em;text-transform:uppercase;margin-bottom:1.4rem;border-bottom:1px solid var(--bd);padding-bottom:.8rem}
+    h2{color:var(--gold);font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;margin-bottom:1rem}
+    h3{color:var(--goldh);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:.6rem}
+
+    .layout{max-width:1440px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}}
+
+    .panel{background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:20px}
+
+    /* Form groups */
+    .fg{margin-bottom:12px;min-width:0}
+    .g2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+    .g3{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:8px}
+    label{display:block;font-size:.68rem;color:var(--muted);margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase}
+    input,select,textarea{width:100%;background:var(--inp);border:1px solid var(--bd);color:var(--text);padding:7px 10px;border-radius:3px;font-size:.85rem}
+    input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+    textarea{resize:vertical;min-height:56px}
+    input[dir=rtl],textarea[dir=rtl]{font-size:.9rem}
+
+    /* Divider */
+    .div{height:1px;background:var(--bd);margin:16px 0}
+
+    /* Sub-sections (images / inscriptions) */
+    .sub{background:rgba(0,0,0,.25);border:1px dashed var(--bd);padding:14px;border-radius:4px;margin-bottom:8px;position:relative}
+    .sub-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .sub-tag{font-size:.62rem;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+    .sub-num{font-size:.62rem;color:var(--muted);margin-left:.5rem}
+
+    /* Buttons */
+    .btn{background:var(--gold);color:#0D0B07;font-weight:700;border:none;padding:9px 16px;border-radius:3px;cursor:pointer;font-size:.78rem;letter-spacing:.06em;transition:background .18s}
+    .btn:hover{background:var(--goldh)}
+    .btn-sec{background:transparent;color:var(--gold);border:1px solid rgba(198,167,92,.4);padding:7px 14px}
+    .btn-sec:hover{background:rgba(198,167,92,.1);color:var(--goldh)}
+    .btn-del{background:var(--red);color:var(--redt);border:none;padding:4px 9px;font-size:.68rem;border-radius:3px;cursor:pointer}
+    .btn-del:hover{background:#7A2020}
+    .btn-copy{background:var(--green);color:var(--greent);border:none;padding:9px 16px;border-radius:3px;cursor:pointer;font-size:.78rem;font-weight:600}
+    .btn-copy:hover{background:#254530}
+    .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+
+    /* Output */
+    pre{background:var(--inp);border:1px solid var(--bd);padding:14px;border-radius:4px;color:#7EC699;overflow-x:auto;font-family:'Courier New',monospace;font-size:.8rem;max-height:75vh;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+
+    /* Glyph image preview */
+    .glyph-preview{margin-top:6px;border:1px dashed var(--bd);padding:4px;background:#fff;display:none;max-width:100%}
+    .glyph-preview img{max-width:100%;height:auto;display:block}
+
+    /* Toast */
+    #toast{position:fixed;bottom:20px;right:20px;background:var(--gold);color:#0D0B07;padding:8px 18px;border-radius:4px;font-size:.8rem;font-weight:700;opacity:0;transition:opacity .2s;pointer-events:none;z-index:999}
+    #toast.show{opacity:1}
+
+    /* Section labels */
+    .section-label{display:flex;align-items:center;gap:8px;margin-bottom:10px;margin-top:16px}
+    .section-label h3{margin:0}
+    .section-label::after{content:'';flex:1;height:1px;background:var(--bd)}
+  </style>
+</head>
+<body>
+
+<h1>⊹ Thoth Scribe — Artifact Data Builder</h1>
+<div id="toast">Copied!</div>
+
+<div class="layout">
+
+  <!-- ── LEFT: INPUT FORM ───────────────────── -->
+  <div class="panel">
+    <h2>Artifact Details</h2>
+
+    <div class="g2">
+      <div class="fg">
+        <label>ID  <span style="color:var(--muted);font-size:.6rem;text-transform:none;letter-spacing:0">(e.g. em-07, nmec-03)</span></label>
+        <input id="id" value="em-07" oninput="gen()">
+      </div>
+      <div class="fg">
+        <label>Museum</label>
+        <select id="museum" onchange="gen()">
+          <option value="egyptian">Egyptian Museum — Tahrir</option>
+          <option value="nmec">NMEC — National Museum</option>
+          <option value="gem">Grand Egyptian Museum — Giza</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="fg"><label>English Title</label><input id="en" oninput="gen()" placeholder="Statue of Osiris"></div>
+      <div class="fg"><label>Arabic Title</label><input id="ar" dir="rtl" oninput="gen()" placeholder="تمثال الإله أوزير"></div>
+    </div>
+
+    <div class="g2">
+      <div class="fg"><label>Dynasty / Date (EN)</label><input id="dyn" oninput="gen()" placeholder="26th Dynasty (c. 570–526 BC)"></div>
+      <div class="fg"><label>Dynasty / Date (AR)</label><input id="dynar" dir="rtl" oninput="gen()" placeholder="الأسرة السادسة والعشرون"></div>
+    </div>
+
+    <div class="g2">
+      <div class="fg"><label>Material (EN)</label><input id="mat" oninput="gen()" placeholder="Red Granite"></div>
+      <div class="fg"><label>Material (AR)</label><input id="matar" dir="rtl" oninput="gen()" placeholder="جرانيت أحمر"></div>
+    </div>
+
+    <div class="g2">
+      <div class="fg"><label>Discovery Site (EN)</label><input id="disc" oninput="gen()" placeholder="Saqqara · Memphis"></div>
+      <div class="fg"><label>Discovery Site (AR)</label><input id="discar" dir="rtl" oninput="gen()" placeholder="سقارة · منف"></div>
+    </div>
+
+    <div class="g2">
+      <div class="fg"><label>Dimensions</label><input id="dim" oninput="gen()" placeholder="H: 89.5 cm · W: 28 cm"></div>
+      <div class="fg"><label>Gallery / Hall</label><input id="gal" oninput="gen()" placeholder="Gallery 24 — Ground Floor"></div>
+    </div>
+
+    <div class="fg"><label>Description (EN)</label><textarea id="den" rows="3" oninput="gen()"></textarea></div>
+    <div class="fg"><label>Description (AR)</label><textarea id="dar" rows="3" dir="rtl" oninput="gen()"></textarea></div>
+
+    <!-- IMAGES -->
+    <div class="section-label"><h3>Images</h3></div>
+    <div id="imgs-wrap"></div>
+    <button class="btn btn-sec" onclick="addImg()">+ Add Image</button>
+
+    <!-- INSCRIPTIONS -->
+    <div class="section-label" style="margin-top:20px"><h3>Inscriptions</h3></div>
+    <div id="insc-wrap"></div>
+    <button class="btn btn-sec" onclick="addInsc()">+ Add Inscription Block</button>
+  </div>
+
+  <!-- ── RIGHT: OUTPUT ──────────────────────── -->
+  <div class="panel">
+    <h2>Generated JS Object</h2>
+    <div class="btn-row">
+      <button class="btn-copy" onclick="copyOut()">⎘ Copy to Clipboard</button>
+      <button class="btn btn-sec" onclick="clearAll()">↺ Clear All</button>
+    </div>
+    <pre id="out"></pre>
+
+    <div class="div"></div>
+    <h3 style="margin-bottom:.5rem">How to use</h3>
+    <p style="font-size:.75rem;color:var(--muted);line-height:1.7">
+      1. Fill in the form. The JS output updates live.<br>
+      2. Click <strong style="color:var(--goldh)">Copy to Clipboard</strong>.<br>
+      3. Open <code style="color:var(--teal)">js/artifacts-data.js</code> and paste the object inside the <code style="color:var(--teal)">window.ARTIFACTS_DATA = [&nbsp;…&nbsp;]</code> array.<br>
+      4. For <strong style="color:var(--goldh)">glImg</strong>: upload the JSesh/museum glyph photo anywhere (Cloudinary, GitHub, museum CDN) and paste the URL into the "Glyph Image URL" field.
+    </p>
+  </div>
+
+</div>
+
+<script>
+/* ── Add Image block ─────────────────────────────── */
+let imgCount = 0;
+function addImg() {
+  imgCount++;
+  const n = imgCount;
+  const wrap = document.getElementById('imgs-wrap');
+  const div = document.createElement('div');
+  div.className = 'sub';
+  div.id = 'img-'+n;
+  div.innerHTML = `
+    <div class="sub-hdr">
+      <span class="sub-tag">Image <span class="sub-num">#${n}</span></span>
+      <button class="btn-del" onclick="document.getElementById('img-${n}').remove();gen()">Remove</button>
+    </div>
+    <div class="fg"><label>Image URL</label><input type="url" class="img-url" placeholder="https://…" oninput="gen()"></div>
+    <div class="g2">
+      <div class="fg"><label>Caption (EN)</label><input class="img-cap-en" placeholder="Front view" oninput="gen()"></div>
+      <div class="fg"><label>Caption (AR)</label><input class="img-cap-ar" dir="rtl" placeholder="وجهة التمثال" oninput="gen()"></div>
+    </div>
+  `;
+  wrap.appendChild(div);
+  gen();
+}
+
+/* ── Add Inscription block ───────────────────────── */
+let inscCount = 0;
+function addInsc() {
+  inscCount++;
+  const n = inscCount;
+  const wrap = document.getElementById('insc-wrap');
+  const div = document.createElement('div');
+  div.className = 'sub';
+  div.id = 'insc-'+n;
+  div.innerHTML = `
+    <div class="sub-hdr">
+      <span class="sub-tag">Inscription <span class="sub-num">#${n}</span></span>
+      <button class="btn-del" onclick="document.getElementById('insc-${n}').remove();gen()">Remove</button>
+    </div>
+
+    <div class="g2">
+      <div class="fg"><label>Location (EN)</label><input class="insc-loc-en" placeholder="Base — Front Face" oninput="gen()"></div>
+      <div class="fg"><label>Location (AR)</label><input class="insc-loc-ar" dir="rtl" placeholder="نص القاعة على وجهة التمثال" oninput="gen()"></div>
+    </div>
+
+    <div class="div"></div>
+    <h3 style="margin-bottom:8px;color:var(--muted)">Glyph Display — pick ONE</h3>
+
+    <div class="fg">
+      <label>
+        Option A — Glyph Photo URL
+        <span style="color:var(--teal);font-size:.6rem;text-transform:none;letter-spacing:0"> (JSesh export / museum image)</span>
+      </label>
+      <input type="url" class="insc-glImg" placeholder="https://…/inscription-front.jpg"
+        oninput="gen();previewGlyph(this,'prev-${n}')">
+      <div id="prev-${n}" class="glyph-preview"><img src="" alt="glyph preview"></div>
+    </div>
+
+    <div class="fg">
+      <label>
+        Optional link on the glyph photo
+        <span style="color:var(--muted);font-size:.6rem;text-transform:none;letter-spacing:0"> (leave blank if none)</span>
+      </label>
+      <input type="url" class="insc-glImgLink" placeholder="https://…/full-resolution" oninput="gen()">
+    </div>
+
+    <div class="fg" style="margin-top:4px">
+      <label>
+        Option B — Unicode Hieroglyphs
+        <span style="color:var(--muted);font-size:.6rem;text-transform:none;letter-spacing:0"> (fallback if no photo)</span>
+      </label>
+      <input class="insc-gl" placeholder="𓁹𓊨𓏏𓅱𓋀𓁹" oninput="gen()" style="font-size:1.1rem">
+    </div>
+
+    <div class="div"></div>
+
+    <div class="g2">
+      <div class="fg"><label>MdC (Manuel de Codage)</label><input class="insc-mdc" placeholder="wsjr nTr aA nb AbDw" oninput="gen()" style="font-family:monospace"></div>
+      <div class="fg"><label>Transliteration</label><input class="insc-tlit" placeholder="Wsjr nṯr ꜥꜣ nb ꜣbḏw" oninput="gen()" style="font-style:italic"></div>
+    </div>
+
+    <div class="fg"><label>Translation (EN)</label><textarea class="insc-trans-en" rows="2" oninput="gen()"></textarea></div>
+    <div class="fg"><label>Translation (AR)</label><textarea class="insc-trans-ar" rows="2" dir="rtl" oninput="gen()"></textarea></div>
+  `;
+  wrap.appendChild(div);
+  gen();
+}
+
+/* ── Glyph image preview ─────────────────────────── */
+function previewGlyph(input, previewId) {
+  const box = document.getElementById(previewId);
+  if (!box) return;
+  const url = input.value.trim();
+  if (url) {
+    box.style.display = 'block';
+    box.querySelector('img').src = url;
+  } else {
+    box.style.display = 'none';
+  }
+  gen();
+}
+
+/* ── Generate output ─────────────────────────────── */
+function gen() {
+  const images = Array.from(document.querySelectorAll('.sub[id^=img-]')).map(b => ({
+    url:        b.querySelector('.img-url').value.trim(),
+    captionEn:  b.querySelector('.img-cap-en').value.trim(),
+    captionAr:  b.querySelector('.img-cap-ar').value.trim(),
+  })).filter(i => i.url);
+
+  const inscriptions = Array.from(document.querySelectorAll('.sub[id^=insc-]')).map(b => {
+    const obj = {
+      locationEn:    b.querySelector('.insc-loc-en').value.trim(),
+      locationAr:    b.querySelector('.insc-loc-ar').value.trim(),
+      glImg:         b.querySelector('.insc-glImg').value.trim(),
+      glImgLink:     b.querySelector('.insc-glImgLink').value.trim(),
+      gl:            b.querySelector('.insc-gl').value.trim(),
+      mdc:           b.querySelector('.insc-mdc').value.trim(),
+      tlit:          b.querySelector('.insc-tlit').value.trim(),
+      translationEn: b.querySelector('.insc-trans-en').value.trim(),
+      translationAr: b.querySelector('.insc-trans-ar').value.trim(),
+    };
+    /* Remove empty optional fields to keep output clean */
+    ['glImg','glImgLink','gl','mdc','tlit','translationEn','translationAr'].forEach(function(k){
+      if(!obj[k]) delete obj[k];
+    });
+    return obj;
+  });
+
+  const artifact = {
+    id:      document.getElementById('id').value.trim(),
+    museum:  document.getElementById('museum').value,
+    en:      document.getElementById('en').value.trim(),
+    ar:      document.getElementById('ar').value.trim(),
+    dyn:     document.getElementById('dyn').value.trim() || undefined,
+    dynar:   document.getElementById('dynar').value.trim() || undefined,
+    mat:     document.getElementById('mat').value.trim() || undefined,
+    matar:   document.getElementById('matar').value.trim() || undefined,
+    disc:    document.getElementById('disc').value.trim() || undefined,
+    discar:  document.getElementById('discar').value.trim() || undefined,
+    dim:     document.getElementById('dim').value.trim() || undefined,
+    gal:     document.getElementById('gal').value.trim() || undefined,
+    den:     document.getElementById('den').value.trim() || undefined,
+    dar:     document.getElementById('dar').value.trim() || undefined,
+    images,
+    inscriptions,
+  };
+
+  /* Remove undefined keys */
+  Object.keys(artifact).forEach(function(k){ if(artifact[k]===undefined) delete artifact[k]; });
+
+  document.getElementById('out').textContent = JSON.stringify(artifact, null, 2) + ',';
+}
+
+/* ── Copy ────────────────────────────────────────── */
+function copyOut() {
+  navigator.clipboard.writeText(document.getElementById('out').textContent)
+    .then(function() {
+      const t = document.getElementById('toast');
+      t.classList.add('show');
+      setTimeout(function(){ t.classList.remove('show'); }, 1800);
+    });
+}
+
+/* ── Clear ───────────────────────────────────────── */
+function clearAll() {
+  if (!confirm('Clear everything and start fresh?')) return;
+  ['id','en','ar','dyn','dynar','mat','matar','disc','discar','dim','gal','den','dar']
+    .forEach(function(k){ document.getElementById(k).value = k==='id'?'em-07':''; });
+  document.getElementById('museum').value = 'egyptian';
+  document.getElementById('imgs-wrap').innerHTML = '';
+  document.getElementById('insc-wrap').innerHTML = '';
+  imgCount = 0; inscCount = 0;
+  gen();
+}
+
+/* ── Init ────────────────────────────────────────── */
+addImg();
+addInsc();
+</script>
+</body>
+</html>
